@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1290" viewBox="0 0 1440 1290">
+    <defs>
+    <style>
+      .title { font: 700 27px 'DejaVu Sans', Arial, sans-serif; fill: #0b1f3a; }
+      .subtitle { font: 500 15px 'DejaVu Sans', Arial, sans-serif; fill: #2c3e50; }
+      .stage { font: 700 18px 'DejaVu Sans', Arial, sans-serif; fill: #0b1f3a; }
+      .text { font: 500 15px 'DejaVu Sans', Arial, sans-serif; fill: #1f2937; }
+      .mono { font: 500 14px 'DejaVu Sans Mono', monospace; fill: #111827; }
+      .small { font: 500 13px 'DejaVu Sans', Arial, sans-serif; fill: #374151; }
+      .arrow { stroke: #334155; stroke-width: 2.6; fill: none; marker-end: url(#arrowhead); }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#334155"/>
+    </marker>
+  </defs>
+    <rect x="0" y="0" width="1440" height="1290" fill="#ffffff"/>
+    <text x="24" y="38" class="title">mul_ascend: что происходит с данными на реальном примере</text>
+    <text x="24" y="62" class="subtitle">дамп промежуточных буферов из настоящего ядра на CPU-модели Ascend910B; 3 элемента (хвост тайла), показаны только валидные лейны</text>
+    <line x1="30" y1="78" x2="1410" y2="78" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="30" y="104" class="stage">1) GM: входные int64 (x и y)</text>
+    <text x="30" y="134" class="text">x[i]</text>
+  <rect x="380" y="114" width="200" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="480" y="134" text-anchor="middle" class="mono" font-size="14px">0000000200000001</text>
+  <rect x="590" y="114" width="200" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="690" y="134" text-anchor="middle" class="mono" font-size="14px">ffffffffffffffff</text>
+  <rect x="800" y="114" width="200" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="900" y="134" text-anchor="middle" class="mono" font-size="14px">123456789abcdef0</text>
+    <text x="30" y="172" class="text">y[i]</text>
+  <rect x="380" y="152" width="200" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="480" y="172" text-anchor="middle" class="mono" font-size="14px">0000000300000004</text>
+  <rect x="590" y="152" width="200" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="690" y="172" text-anchor="middle" class="mono" font-size="14px">ffffffffffffffff</text>
+  <rect x="800" y="152" width="200" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="900" y="172" text-anchor="middle" class="mono" font-size="14px">fedcba9876543210</text>
+    <text x="380" y="204" class="small">старшие 32 бита каждого int64 — это aHi/bHi, младшие — aLo/bLo</text>
+    <line x1="700" y1="214" x2="700" y2="238" class="arrow"/>
+    <line x1="30" y1="246" x2="1410" y2="246" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="30" y="272" class="stage">2) UB: сырой тайл как uint32-лейны (x и y лежат подряд в одном буфере)</text>
+    <text x="30" y="302" class="text">x: lo0 hi0 lo1 hi1 ...</text>
+  <rect x="380" y="282" width="110" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="435" y="302" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="500" y="282" width="110" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="555" y="302" text-anchor="middle" class="mono" font-size="14px">00000002</text>
+  <rect x="620" y="282" width="110" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="675" y="302" text-anchor="middle" class="mono" font-size="14px">ffffffff</text>
+  <rect x="740" y="282" width="110" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="795" y="302" text-anchor="middle" class="mono" font-size="14px">ffffffff</text>
+  <rect x="860" y="282" width="110" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="915" y="302" text-anchor="middle" class="mono" font-size="14px">9abcdef0</text>
+  <rect x="980" y="282" width="110" height="30" rx="6" fill="#bfdbfe" stroke="#1f2937" stroke-width="1.4"/><text x="1035" y="302" text-anchor="middle" class="mono" font-size="14px">12345678</text>
+    <text x="380" y="326" class="small">y начинается по смещению 8*TILE_ELEMS = 4096 байт</text>
+    <line x1="700" y1="336" x2="700" y2="360" class="arrow"/>
+  <text x="716" y="354" class="small">Gather со смещениями В БАЙТАХ: 8j (младшие половины) и 8j+4 (старшие)</text>
+    <line x1="30" y1="368" x2="1410" y2="368" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="30" y="394" class="stage">3) Split: 2 Gather вместо 4 — сразу [aLo | bLo] и [aHi | bHi]</text>
+    <text x="30" y="424" class="text">aLo</text>
+  <rect x="380" y="404" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="435" y="424" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="500" y="404" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="555" y="424" text-anchor="middle" class="mono" font-size="14px">ffffffff</text>
+  <rect x="620" y="404" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="675" y="424" text-anchor="middle" class="mono" font-size="14px">9abcdef0</text>
+    <text x="30" y="462" class="text">aHi</text>
+  <rect x="380" y="442" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="435" y="462" text-anchor="middle" class="mono" font-size="14px">00000002</text>
+  <rect x="500" y="442" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="555" y="462" text-anchor="middle" class="mono" font-size="14px">ffffffff</text>
+  <rect x="620" y="442" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="675" y="462" text-anchor="middle" class="mono" font-size="14px">12345678</text>
+    <text x="30" y="424" class="text">bLo</text>
+  <rect x="790" y="404" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="845" y="424" text-anchor="middle" class="mono" font-size="14px">00000004</text>
+  <rect x="910" y="404" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="965" y="424" text-anchor="middle" class="mono" font-size="14px">ffffffff</text>
+  <rect x="1030" y="404" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="1085" y="424" text-anchor="middle" class="mono" font-size="14px">76543210</text>
+    <text x="30" y="462" class="text">bHi</text>
+  <rect x="790" y="442" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="845" y="462" text-anchor="middle" class="mono" font-size="14px">00000003</text>
+  <rect x="910" y="442" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="965" y="462" text-anchor="middle" class="mono" font-size="14px">ffffffff</text>
+  <rect x="1030" y="442" width="110" height="30" rx="6" fill="#bbf7d0" stroke="#1f2937" stroke-width="1.4"/><text x="1085" y="462" text-anchor="middle" class="mono" font-size="14px">fedcba98</text>
+    <line x1="700" y1="480" x2="700" y2="504" class="arrow"/>
+    <line x1="30" y1="512" x2="1410" y2="512" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="30" y="538" class="stage">4) Три произведения: младшие 32 бита — ровно одна инструкция Mul</text>
+    <text x="30" y="568" class="text">rLo = Mul(aLo,bLo)</text>
+  <rect x="380" y="548" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="445" y="568" text-anchor="middle" class="mono" font-size="14px">00000004</text>
+  <rect x="520" y="548" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="585" y="568" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="660" y="548" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="725" y="568" text-anchor="middle" class="mono" font-size="14px">5618cf00</text>
+    <text x="30" y="606" class="text">p1 = Mul(aLo,bHi)</text>
+  <rect x="380" y="586" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="445" y="606" text-anchor="middle" class="mono" font-size="14px">00000003</text>
+  <rect x="520" y="586" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="585" y="606" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="660" y="586" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="725" y="606" text-anchor="middle" class="mono" font-size="14px">d05ebe80</text>
+    <text x="30" y="644" class="text">p2 = Mul(aHi,bLo)</text>
+  <rect x="380" y="624" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="445" y="644" text-anchor="middle" class="mono" font-size="14px">00000008</text>
+  <rect x="520" y="624" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="585" y="644" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="660" y="624" width="130" height="30" rx="6" fill="#fde68a" stroke="#1f2937" stroke-width="1.4"/><text x="725" y="644" text-anchor="middle" class="mono" font-size="14px">0b88d780</text>
+    <text x="790" y="568" class="small">rLo — это сразу младшие 32 бита результата</text>
+    <text x="790" y="606" class="small">p1/p2 нужны только младшими 32 битами</text>
+    <line x1="700" y1="664" x2="700" y2="688" class="arrow"/>
+  <text x="716" y="682" class="small">high32(aLo*bLo) = MulHi (22 инструкции), затем rHi = MulHi + p1 + p2</text>
+    <line x1="30" y1="696" x2="1410" y2="696" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="30" y="722" class="stage">5) MulHi внутри — элемент [1] (все 0xFFFFFFFF: максимум переносов)</text>
+    <text x="30" y="752" class="text">x0  x1  y0  y1  (16 бит)</text>
+  <rect x="380" y="732" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="445" y="752" text-anchor="middle" class="mono" font-size="14px">0000ffff</text>
+  <rect x="520" y="732" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="585" y="752" text-anchor="middle" class="mono" font-size="14px">0000ffff</text>
+  <rect x="660" y="732" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="725" y="752" text-anchor="middle" class="mono" font-size="14px">0000ffff</text>
+  <rect x="800" y="732" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="865" y="752" text-anchor="middle" class="mono" font-size="14px">0000ffff</text>
+    <text x="940" y="752" class="small">x0/y0 — младшие 16 бит, x1/y1 — старшие</text>
+    <text x="30" y="790" class="text">U=x0*y1  V=x1*y0  W=x1*y1  A=x0*y0</text>
+  <rect x="380" y="770" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="445" y="790" text-anchor="middle" class="mono" font-size="14px">fffe0001</text>
+  <rect x="520" y="770" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="585" y="790" text-anchor="middle" class="mono" font-size="14px">fffe0001</text>
+  <rect x="660" y="770" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="725" y="790" text-anchor="middle" class="mono" font-size="14px">fffe0001</text>
+  <rect x="800" y="770" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="865" y="790" text-anchor="middle" class="mono" font-size="14px">fffe0001</text>
+    <text x="30" y="828" class="text">U0  V0  T_lo=s0&amp;0xffff  c0=s0&gt;&gt;16</text>
+  <rect x="380" y="808" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="445" y="828" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="520" y="808" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="585" y="828" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="660" y="808" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="725" y="828" text-anchor="middle" class="mono" font-size="14px">00000002</text>
+  <rect x="800" y="808" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="865" y="828" text-anchor="middle" class="mono" font-size="14px">00000000</text>
+    <text x="940" y="828" class="small">c0=1: перенос из s0 = U0+V0 = 0x0001+0x0001 = 0x10000</text>
+    <text x="30" y="866" class="text">T_hi  S_hi  high32</text>
+  <rect x="380" y="846" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="445" y="866" text-anchor="middle" class="mono" font-size="14px">0001fffc</text>
+  <rect x="520" y="846" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="585" y="866" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="660" y="846" width="130" height="30" rx="6" fill="#ddd6fe" stroke="#1f2937" stroke-width="1.4"/><text x="725" y="866" text-anchor="middle" class="mono" font-size="14px">fffffffe</text>
+    <text x="800" y="866" class="small">T_hi = U1+V1+c0 = fffe+fffe+1 = 0x1fffc;  high32 = W+T_hi+S_hi = fffffffe</text>
+    <line x1="700" y1="884" x2="700" y2="908" class="arrow"/>
+    <line x1="30" y1="916" x2="1410" y2="916" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="30" y="942" class="stage">6) tPack = [rLo | rHi]  и  Merge (Gather по 4*(j/2) + (j%2)*4*TILE_ELEMS)</text>
+    <text x="30" y="972" class="text">rLo в tPack</text>
+  <rect x="380" y="952" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="435" y="972" text-anchor="middle" class="mono" font-size="14px">00000004</text>
+  <rect x="500" y="952" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="555" y="972" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="620" y="952" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="675" y="972" text-anchor="middle" class="mono" font-size="14px">5618cf00</text>
+    <text x="30" y="1010" class="text">rHi в tPack</text>
+  <rect x="380" y="990" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="435" y="1010" text-anchor="middle" class="mono" font-size="14px">0000000b</text>
+  <rect x="500" y="990" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="555" y="1010" text-anchor="middle" class="mono" font-size="14px">00000000</text>
+  <rect x="620" y="990" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="675" y="1010" text-anchor="middle" class="mono" font-size="14px">236d88fe</text>
+    <text x="790" y="972" class="small">rLo по смещению 0</text>
+    <text x="790" y="1010" class="small">rHi по смещению 512 лейнов = 2048 байт</text>
+    <text x="30" y="1048" class="text">индекс merge (байты)</text>
+  <rect x="380" y="1028" width="110" height="30" rx="6" fill="#e2e8f0" stroke="#1f2937" stroke-width="1.4"/><text x="435" y="1048" text-anchor="middle" class="mono" font-size="14px">00000000</text>
+  <rect x="500" y="1028" width="110" height="30" rx="6" fill="#e2e8f0" stroke="#1f2937" stroke-width="1.4"/><text x="555" y="1048" text-anchor="middle" class="mono" font-size="14px">00000804</text>
+  <rect x="620" y="1028" width="110" height="30" rx="6" fill="#e2e8f0" stroke="#1f2937" stroke-width="1.4"/><text x="675" y="1048" text-anchor="middle" class="mono" font-size="14px">00000004</text>
+  <rect x="740" y="1028" width="110" height="30" rx="6" fill="#e2e8f0" stroke="#1f2937" stroke-width="1.4"/><text x="795" y="1048" text-anchor="middle" class="mono" font-size="14px">00000808</text>
+  <rect x="860" y="1028" width="110" height="30" rx="6" fill="#e2e8f0" stroke="#1f2937" stroke-width="1.4"/><text x="915" y="1048" text-anchor="middle" class="mono" font-size="14px">00000008</text>
+  <rect x="980" y="1028" width="110" height="30" rx="6" fill="#e2e8f0" stroke="#1f2937" stroke-width="1.4"/><text x="1035" y="1048" text-anchor="middle" class="mono" font-size="14px">0000080c</text>
+    <text x="30" y="1086" class="text">out32 (лейны)</text>
+  <rect x="380" y="1066" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="435" y="1086" text-anchor="middle" class="mono" font-size="14px">00000004</text>
+  <rect x="500" y="1066" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="555" y="1086" text-anchor="middle" class="mono" font-size="14px">0000000b</text>
+  <rect x="620" y="1066" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="675" y="1086" text-anchor="middle" class="mono" font-size="14px">00000001</text>
+  <rect x="740" y="1066" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="795" y="1086" text-anchor="middle" class="mono" font-size="14px">00000000</text>
+  <rect x="860" y="1066" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="915" y="1086" text-anchor="middle" class="mono" font-size="14px">5618cf00</text>
+  <rect x="980" y="1066" width="110" height="30" rx="6" fill="#a5f3fc" stroke="#1f2937" stroke-width="1.4"/><text x="1035" y="1086" text-anchor="middle" class="mono" font-size="14px">236d88fe</text>
+    <text x="790" y="1086" class="small">rLo и rHi встают в один int64</text>
+    <line x1="700" y1="1108" x2="700" y2="1132" class="arrow"/>
+    <line x1="30" y1="1140" x2="1410" y2="1140" stroke="#94a3b8" stroke-width="1.5"/>
+  <text x="30" y="1166" class="stage">7) GM: выходные int64 — совпадает с x[i] * y[i] mod 2^64</text>
+    <text x="30" y="1196" class="text">z[i]</text>
+  <rect x="380" y="1176" width="200" height="30" rx="6" fill="#86efac" stroke="#1f2937" stroke-width="1.4"/><text x="480" y="1196" text-anchor="middle" class="mono" font-size="14px">0000000b00000004</text>
+  <rect x="590" y="1176" width="200" height="30" rx="6" fill="#86efac" stroke="#1f2937" stroke-width="1.4"/><text x="690" y="1196" text-anchor="middle" class="mono" font-size="14px">0000000000000001</text>
+  <rect x="800" y="1176" width="200" height="30" rx="6" fill="#86efac" stroke="#1f2937" stroke-width="1.4"/><text x="900" y="1196" text-anchor="middle" class="mono" font-size="14px">236d88fe5618cf00</text>
+    <text x="30" y="1234" class="text">эталон</text>
+  <rect x="380" y="1214" width="200" height="30" rx="6" fill="#dcfce7" stroke="#1f2937" stroke-width="1.4"/><text x="480" y="1234" text-anchor="middle" class="mono" font-size="14px">0000000b00000004</text>
+  <rect x="590" y="1214" width="200" height="30" rx="6" fill="#dcfce7" stroke="#1f2937" stroke-width="1.4"/><text x="690" y="1234" text-anchor="middle" class="mono" font-size="14px">0000000000000001</text>
+  <rect x="800" y="1214" width="200" height="30" rx="6" fill="#dcfce7" stroke="#1f2937" stroke-width="1.4"/><text x="900" y="1234" text-anchor="middle" class="mono" font-size="14px">236d88fe5618cf00</text>
+    <text x="380" y="1268" class="small">проверено моделью и независимым пересчётом в этом скрипте (0 расхождений)</text>
+  </svg>

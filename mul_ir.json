@@ -1,0 +1,27 @@
+[
+  {
+    "op": "MulAscend",
+    "input_desc": [
+      {
+        "name": "x",
+        "param_type": "required",
+        "format": ["ND"],
+        "type": ["int64"]
+      },
+      {
+        "name": "y",
+        "param_type": "required",
+        "format": ["ND"],
+        "type": ["int64"]
+      }
+    ],
+    "output_desc": [
+      {
+        "name": "z",
+        "param_type": "required",
+        "format": ["ND"],
+        "type": ["int64"]
+      }
+    ]
+  }
+]

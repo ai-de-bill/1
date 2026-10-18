@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1220" viewBox="0 0 1800 1220">
+  <defs>
+    <style>
+      .title { font: 700 38px 'DejaVu Sans', Arial, sans-serif; fill: #0b1f3a; }
+      .subtitle { font: 500 18px 'DejaVu Sans', Arial, sans-serif; fill: #2c3e50; }
+      .stage { font: 700 20px 'DejaVu Sans', Arial, sans-serif; fill: #0b1f3a; }
+      .text { font: 500 16px 'DejaVu Sans', Arial, sans-serif; fill: #1f2937; }
+      .mono { font: 500 15px 'DejaVu Sans Mono', monospace; fill: #111827; }
+      .small { font: 500 14px 'DejaVu Sans', Arial, sans-serif; fill: #374151; }
+      .warn { font: 600 15px 'DejaVu Sans', Arial, sans-serif; fill: #7c2d12; }
+      .box { stroke: #1f2937; stroke-width: 2.2; rx: 16; ry: 16; }
+      .arrow { stroke: #334155; stroke-width: 3; fill: none; marker-end: url(#arrowhead); }
+      .dashed { stroke-dasharray: 8 8; }
+    </style>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#334155"/>
+    </marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f8fbff"/>
+      <stop offset="100%" stop-color="#eef5ff"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="0" y="0" width="1800" height="1220" fill="url(#bg)"/>
+
+  <text x="60" y="66" class="title">mul_ascend (int64 × int64 → int64 mod 2⁶⁴) — Наглядная схема алгоритма</text>
+  <text x="60" y="96" class="subtitle">Target: Ascend 910B / CANN 9.1, где чистый vector int64 multiply недоступен → используется декомпозиция через int32/int16</text>
+
+  <!-- Stage 1 -->
+  <rect class="box" x="60" y="130" width="390" height="210" fill="#dbeafe"/>
+  <text x="80" y="165" class="stage">1) Input + Tiling</text>
+  <text x="80" y="195" class="text">GM buffers:</text>
+  <text x="100" y="222" class="mono">x[int64], y[int64], z[int64]</text>
+  <text x="80" y="252" class="text">По blockIdx рассчитываем диапазон:</text>
+  <text x="100" y="279" class="mono">start, end, localCount</text>
+  <text x="80" y="309" class="small">Если block пустой → early return</text>
+
+  <!-- Stage 2 -->
+  <rect class="box" x="520" y="130" width="390" height="210" fill="#dcfce7"/>
+  <text x="540" y="165" class="stage">2) Tile loop</text>
+  <text x="540" y="195" class="text">Порции по TILE_ELEMS = 512:</text>
+  <text x="560" y="222" class="mono">inLocal[0..N)  ← DataCopyPad(gX[offset])</text>
+  <text x="560" y="246" class="mono">inLocal[N..2N) ← DataCopyPad(gY[offset])   (x и y в одном буфере)</text>
+  <text x="560" y="270" class="mono">outLocal ← ComputeTile(...)</text>
+  <text x="560" y="294" class="mono">DataCopyPad(gZ[offset], outLocal)</text>
+  <text x="540" y="323" class="small">TBuf ping-pong + явные SetFlag/WaitFlag&lt;HardEvent&gt; (MTE2_V, V_MTE2, V_MTE3, MTE3_V)</text>
+
+  <!-- Stage 3 -->
+  <rect class="box" x="980" y="130" width="760" height="210" fill="#fef3c7"/>
+  <text x="1000" y="165" class="stage">3) Split 64→(lo32, hi32): один Gather на каждую половину</text>
+  <text x="1000" y="195" class="mono">in32 = [x_lo0,x_hi0,... | y_lo0,y_hi0,...]  (x и y подряд в одном тензоре)</text>
+  <text x="1000" y="224" class="text">idxLo[j] = 8*j,  idxHi[j] = 8*j + 4   (смещения в байтах)</text>
+  <text x="1020" y="252" class="mono">idxBase = [0,1,2,...,count-1] ; idxEven = 8*idxBase ; idxOdd = 8*idxBase + 4 (байты)</text>
+  <text x="1020" y="279" class="mono">Gather(tLoBuf, in32, idxLo, 2N), Gather(tHiBuf, in32, idxHi, 2N)</text>
+  <text x="1000" y="312" class="small">tLoBuf = [aLo | bLo],  tHiBuf = [aHi | bHi]   (2 Gather вместо 4)</text>
+
+  <!-- Arrows top row -->
+  <path class="arrow" d="M450 235 L510 235"/>
+  <path class="arrow" d="M910 235 L970 235"/>
+
+  <!-- Stage 4 -->
+  <rect class="box" x="60" y="390" width="820" height="330" fill="#ede9fe"/>
+  <text x="80" y="425" class="stage">4) Ядро: MulHi(x, y) = high32(x*y) через 16-битные полусуммы</text>
+  <text x="80" y="454" class="mono">x = x1*2^16 + x0,  y = y1*2^16 + y0</text>
+  <text x="80" y="483" class="mono">x*y = A + T*2^16 + W*2^32,  A = x0*y0, T = x0*y1 + x1*y0, W = x1*y1</text>
+  <text x="80" y="512" class="mono">U = x0*y1 = U1*2^16 + U0,  V = x1*y0 = V1*2^16 + V0</text>
+  <text x="80" y="541" class="mono">s0 = U0 + V0 (точно, s0 &lt; 2^17):  T_lo = s0 &amp; 0xFFFF,  c0 = s0 &gt;&gt; 16</text>
+  <text x="80" y="570" class="mono">T_hi = U1 + V1 + c0   (точно равно T &gt;&gt; 16)</text>
+  <text x="80" y="603" class="text">high32 = W + T_hi + (((A &gt;&gt; 16) + T_lo) &gt;&gt; 16)</text>
+  <text x="100" y="632" class="mono">Никаких битовых «переносных» формул: 4 Mul, 5 And, 7 Shift, 6 Add = 22 инструкции</text>
+  <text x="100" y="660" class="small">маска 0xFFFF: Duplicate(0x0000FFFF) в Init; And по uint16-view, count = 2 * elements</text>
+  <text x="80" y="695" class="small">MulHi вызывается только для aLo*bLo (нужны старшие 32 бита)</text>
+
+  <!-- Stage 5 -->
+  <rect class="box" x="920" y="390" width="820" height="330" fill="#fee2e2"/>
+  <text x="940" y="425" class="stage">5) Три произведения: перекрёстные — по одной инструкции Mul</text>
+  <text x="940" y="454" class="mono">rLo = Mul(aLo, bLo)         — 1 инструкция (это низ результата)</text>
+  <text x="940" y="483" class="mono">p1 = Mul(aLo, bHi)          — 1 инструкция, нужен только низ</text>
+  <text x="940" y="512" class="mono">p2 = Mul(aHi, bLo)          — 1 инструкция, нужен только низ</text>
+  <text x="940" y="545" class="text">По формуле modulo 2⁶⁴:</text>
+  <text x="960" y="574" class="mono">a*b = (aLo*bLo) + ((aLo*bHi + aHi*bLo) &lt;&lt; 32)</text>
+  <text x="960" y="603" class="mono">p0Hi = MulHi(aLo, bLo)      — 22 инструкции</text>
+  <text x="960" y="632" class="mono">rHi = p0Hi + p1 + p2   (переполнение отбрасывается mod 2³²)</text>
+  <text x="940" y="668" class="small">Итого 27 арифметических инструкций на тайл вместо 92</text>
+  <text x="940" y="698" class="small">(это и есть семантика int64 wrap-around)</text>
+
+  <path class="arrow" d="M880 555 L910 555"/>
+
+  <!-- Stage 6 -->
+  <rect class="box" x="60" y="770" width="820" height="260" fill="#cffafe"/>
+  <text x="80" y="805" class="stage">6) MergeHalvesToU64 + Store</text>
+  <text x="80" y="835" class="text">Обратная упаковка двух 32-битных половин в layout int64:</text>
+  <text x="100" y="865" class="mono">srcPack = [rLo(0..N-1), rHi(0..N-1)]</text>
+  <text x="100" y="894" class="mono">idxInterleave = [0,4N,4,4N+4,8,4N+8,...] (байты)</text>
+  <text x="100" y="923" class="mono">out32 = Gather(srcPack, idxInterleave)</text>
+  <text x="80" y="955" class="mono">DataCopyPad(outLocal → gZ[offset])</text>
+  <text x="80" y="988" class="small">Далее next tile; MTE2(i+1) / V(i) / MTE3(i-1) перекрываются (явные флаги)</text>
+
+  <!-- Stage 7 -->
+  <rect class="box" x="920" y="770" width="820" height="260" fill="#ffedd5"/>
+  <text x="940" y="805" class="stage">7) Ограничения dav_c220 и как они обойдены</text>
+  <text x="940" y="838" class="warn">• vmul/vadd/vsub не имеют перегрузки для uint32 → арифметика на int32 (mod 2³² от знака не зависит)</text>
+  <text x="940" y="868" class="warn">• тензорный ShiftLeft/ShiftRight есть только на 3510 → скалярный сдвиг ShiftLeft(dst, src, 16, count) на uint32</text>
+  <text x="940" y="898" class="warn">• vand/vor/vnot — 16-битные: 32-битная перегрузка AscendC берёт B16-маску и обрабатывает половину</text>
+  <text x="940" y="928" class="warn">• Gather принимает смещения в байтах; x и y лежат подряд → 2 Gather на тайл; DataCopy требует кратности 32B → DataCopyPad</text>
+  <text x="940" y="958" class="text">=> Математика алгоритма корректна, все ограничения обойдены: kernel собирается и проходит CPU-debug проверку</text>
+  <text x="940" y="982" class="small">Итог: 30 векторных инструкций на тайл 512 элементов (0.06/элемент) вместо 97 на 256 (0.38/элемент)</text>
+
+  <!-- Vertical arrows -->
+  <path class="arrow" d="M470 340 L470 380"/>
+  <path class="arrow" d="M1330 340 L1330 380"/>
+  <path class="arrow dashed" d="M470 720 L470 760"/>
+  <path class="arrow dashed" d="M1330 720 L1330 760"/>
+
+  <!-- Legend -->
+  <rect class="box" x="60" y="1060" width="1680" height="120" fill="#f3f4f6"/>
+  <text x="80" y="1096" class="stage">Легенда</text>
+  <text x="80" y="1126" class="small">• Синие/зелёные блоки: dataflow пайплайна (что происходит в kernel)</text>
+  <text x="80" y="1152" class="small">• Фиолетовый/красный: математическое ядро умножения</text>
+  <text x="840" y="1126" class="small">• Голубой: упаковка результата и запись</text>
+  <text x="840" y="1152" class="small">• Оранжевый: ограничения backend dav_c220 и способы их обхода</text>
+</svg>

@@ -1,0 +1,28 @@
+INPUT x = 0000000200000001 ffffffffffffffff 123456789abcdef0
+INPUT y = 0000000300000004 ffffffffffffffff fedcba9876543210
+REF z[0] = 0000000b00000004  (lo32=00000004 hi32=0000000b)
+REF z[1] = 0000000000000001  (lo32=00000001 hi32=00000000)
+REF z[2] = 236d88fe5618cf00  (lo32=5618cf00 hi32=236d88fe)
+OUT z = 0000000b00000004 0000000000000001 236d88fe5618cf00
+SLOT 00 | tLoBuf = [aLo|bLo] : aLo | 00000001 ffffffff 9abcdef0 00000001
+SLOT 01 | tLoBuf = [aLo|bLo] : bLo | 00000004 ffffffff 76543210 00000004
+SLOT 02 | tHiBuf = [aHi|bHi] : aHi | 00000002 ffffffff 12345678 00000001
+SLOT 03 | tHiBuf = [aHi|bHi] : bHi | 00000003 ffffffff fedcba98 00000004
+SLOT 04 | in32 (raw tile lanes)  | 00000001 00000002 ffffffff ffffffff
+SLOT 05 | tPack : rLo            | 00000004 00000001 5618cf00 00000004
+SLOT 06 | tPack : rHi            | 0000000b 00000000 236d88fe 00000404
+SLOT 07 | -                      | deadbeef deadbeef deadbeef deadbeef
+SLOT 08 | MulHi: x0              | 00000001 0000ffff 0000def0 623e640b
+SLOT 09 | MulHi: y0              | 00000004 0000ffff 00003210 7e934bf4
+SLOT 10 | MulHi: x1              | 00000000 0000ffff 00009abc 76d9273a
+SLOT 11 | MulHi: y1              | 00000000 0000ffff 00007654 3d54773e
+SLOT 12 | MulHi: U=x0*y1         | 00000000 fffe0001 670bc6c0 2f86695c
+SLOT 13 | MulHi: V=x1*y0         | 00000000 fffe0001 1e4263c0 375c2510
+SLOT 14 | MulHi: W=x1*y1         | 00000000 fffe0001 47856db0 66a71c7e
+SLOT 15 | MulHi: A=x0*y0         | 00000004 fffe0001 2b98cf00 27b655a4
+SLOT 16 | MulHi: U0              | 00000000 00000001 0000c6c0 623e640b
+SLOT 17 | MulHi: V0              | 00000000 00000001 000063c0 7e934bf4
+SLOT 18 | MulHi: s0(U0+V0)       | 00000000 00000002 00002a80 76d9273a
+SLOT 19 | MulHi: c0=s0>>16       | 00000000 00000000 00000001 3d54773e
+SLOT 20 | MulHi: T_hi            | 00000000 0001fffc 0000854e 2f86695c
+SLOT 21 | MulHi: S_hi            | 00000000 00000001 00000000 27b655a4
